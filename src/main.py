@@ -19,11 +19,20 @@ HISTORY_FILE = pathjoin(expanduser('~'), 'bing-wallpaper-history.json')
 
 _logger = log.getChild('main')
 
+class UnsupportedPlatform(Exception):
+    def __init__(self, platform):
+        self.platform = platform
+        Exception.__init__(self, 'unsupported platform "%s"' % (self.platform,))
+
 def load_setters():
-    if platform == 'win32':
-        return ['no', 'win']
-    else:
-        return ['no', 'gnome3', 'gnome2']
+    supported = {
+        'win32' : ['no', 'win'],
+        'darwin' : ['no', 'osx'],
+        'linux' : ['no', 'gnome3', 'gnome2'],
+    }
+    if platform not in supported:
+        raise UnsupportedPlatform(platform)
+    return supported[platform]
 
 def parseargs(args):
     setters = load_setters()
@@ -239,7 +248,12 @@ def start_daemon(config):
     _logger.info('daemon %s exited', str(daemon))
 
 if __name__ == '__main__':
-    config = parseargs(argv[1:])
+    try:
+        config = parseargs(argv[1:])
+    except UnsupportedPlatform as ex:
+        _logger.fatal(str(ex))
+        _logger.info('you can create an issue on %s to report your OS', LINK)
+        sysexit(1)
     set_debug_details(config.debug)
     _logger.debug(config)
     if config.background:
